@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Brass Lantern – Pub Trivia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== PERSISTENT HOME BUTTON ===== -->
+  <button id="btn-home-nav" class="home-nav-btn" style="display:none" onclick="goHome()">🏠 Home</button>
+
+  <!-- ===== HOME SCREEN ===== -->
+  <div id="screen-home" class="screen active">
+    <div class="home-inner">
+      <div class="logo-wrap">
+        <div class="lantern-icon">🏮</div>
+        <h1 class="logo-title">The Brass Lantern</h1>
+        <p class="logo-sub">Pub Trivia Night</p>
+        <p class="logo-tagline">Sharp minds. Warm pints. Legendary scores.</p>
+      </div>
+      <div class="home-buttons">
+        <button class="btn btn-primary btn-lg" id="btn-new-game">▶ Solo Game</button>
+        <button class="btn btn-host btn-lg" id="btn-host-game">🎤 Host a Group Game</button>
+        <button class="btn btn-secondary btn-lg" id="btn-high-scores">🏆 High Scores</button>
+      </div>
+      <p class="home-version">180 questions across 12 categories</p>
+    </div>
+  </div>
+
+  <!-- ===== SETUP SCREEN ===== -->
+  <div id="screen-setup" class="screen">
+    <div class="screen-inner">
+      <div id="setup-mode-badge" class="mode-badge"></div>
+      <h2 class="screen-title">Set Up Your Game</h2>
+      <p class="screen-sub">Choose <strong>3 categories</strong> — each becomes a round of 10 questions.</p>
+
+      <div class="player-row" id="player-name-row">
+        <label for="player-name">Your Name (optional):</label>
+        <input type="text" id="player-name" placeholder="e.g. Quiz Wizard" maxlength="24" autocomplete="off" />
+      </div>
+
+      <div class="category-grid" id="category-grid"></div>
+
+      <div class="setup-footer">
+        <span id="selection-count" class="selection-count">0 / 3 selected</span>
+        <button class="btn btn-primary btn-lg" id="btn-start" disabled>Start Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GAME SCREEN ===== -->
+  <div id="screen-game" class="screen">
+    <div class="screen-inner">
+      <div class="game-header">
+        <div class="round-badge" id="round-badge">Round 1</div>
+        <div class="category-name" id="category-name">Category</div>
+        <div class="score-display" id="score-display">Score: 0</div>
+      </div>
+
+      <div class="question-meta">
+        <span id="question-counter">Question 1 of 10</span>
+        <span id="timer-display" class="timer">⏱ 30</span>
+      </div>
+
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+
+      <div class="question-box" id="question-text">Question text here...</div>
+
+      <div class="options-grid" id="options-grid">
+        <button class="option-btn" data-idx="0"></button>
+        <button class="option-btn" data-idx="1"></button>
+        <button class="option-btn" data-idx="2"></button>
+        <button class="option-btn" data-idx="3"></button>
+      </div>
+
+      <div class="fun-fact-box" id="fun-fact-box" style="display:none">
+        <span class="fun-fact-label">💡 Fun Fact</span>
+        <p id="fun-fact-text"></p>
+      </div>
+
+      <div class="game-footer">
+        <button class="btn btn-host-reveal" id="btn-reveal" style="display:none" onclick="revealAnswer()">🔓 Reveal Answer</button>
+        <button class="btn btn-primary" id="btn-next" style="display:none">Next Question →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ROUND SUMMARY SCREEN ===== -->
+  <div id="screen-round-summary" class="screen">
+    <div class="screen-inner">
+      <div class="summary-header">
+        <div class="summary-emoji" id="summary-emoji">🎉</div>
+        <h2 class="screen-title" id="summary-title">Round Complete!</h2>
+        <div class="summary-score" id="summary-score">7 / 10</div>
+        <div class="summary-category" id="summary-category">History</div>
+      </div>
+      <div class="question-breakdown" id="question-breakdown"></div>
+      <div class="setup-footer">
+        <button class="btn btn-primary btn-lg" id="btn-next-round">Next Round →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FINAL RESULTS SCREEN ===== -->
+  <div id="screen-results" class="screen">
+    <div class="screen-inner">
+      <div class="results-header">
+        <div class="results-trophy" id="results-trophy">🏆</div>
+        <h2 class="results-title" id="results-title">Quiz Complete!</h2>
+        <div class="results-score" id="results-total-score">21 / 30</div>
+        <div class="results-percentage" id="results-percentage">70%</div>
+        <div class="results-rating" id="results-rating">Regular Punter</div>
+      </div>
+
+      <div class="results-breakdown" id="results-breakdown"></div>
+
+      <div class="results-buttons">
+        <button class="btn btn-secondary" id="btn-share">📋 Copy Score</button>
+        <button class="btn btn-secondary" id="btn-high-scores-2">🏆 High Scores</button>
+        <button class="btn btn-primary btn-lg" id="btn-play-again">Play Again</button>
+      </div>
+      <p class="share-confirm" id="share-confirm" style="display:none">✓ Copied to clipboard!</p>
+    </div>
+  </div>
+
+  <!-- ===== HOST ANSWER SHEET SCREEN ===== -->
+  <div id="screen-host-answers" class="screen">
+    <div class="screen-inner">
+      <div class="host-answer-header">
+        <div class="host-answer-icon">📋</div>
+        <h2 class="screen-title" id="host-answer-title">Round 1 Answer Sheet</h2>
+        <p class="screen-sub" id="host-answer-category"></p>
+      </div>
+      <div class="host-answer-list" id="host-answer-list"></div>
+      <div class="setup-footer">
+        <button class="btn btn-secondary" id="btn-copy-answers">📋 Copy Answers</button>
+        <button class="btn btn-primary btn-lg" id="btn-host-next-round">Next Round →</button>
+      </div>
+      <p class="share-confirm" id="copy-answers-confirm" style="display:none">✓ Copied to clipboard!</p>
+    </div>
+  </div>
+
+  <!-- ===== HOST FINAL ANSWER SHEET ===== -->
+  <div id="screen-host-final" class="screen">
+    <div class="screen-inner">
+      <div class="host-answer-header">
+        <div class="host-answer-icon">🏆</div>
+        <h2 class="screen-title">Full Answer Sheet</h2>
+        <p class="screen-sub">All 30 answers across 3 rounds</p>
+      </div>
+      <div id="host-final-list"></div>
+      <div class="setup-footer">
+        <button class="btn btn-secondary" id="btn-copy-all-answers">📋 Copy All Answers</button>
+        <button class="btn btn-primary btn-lg" id="btn-host-play-again">Play Again</button>
+      </div>
+      <p class="share-confirm" id="copy-all-confirm" style="display:none">✓ Copied to clipboard!</p>
+    </div>
+  </div>
+
+  <!-- ===== HIGH SCORES SCREEN ===== -->
+  <div id="screen-highscores" class="screen">
+    <div class="screen-inner">
+      <h2 class="screen-title">🏆 High Scores</h2>
+      <div class="highscore-table" id="highscore-table"></div>
+      <div class="setup-footer">
+        <button class="btn btn-secondary" id="btn-back-home">← Back</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
