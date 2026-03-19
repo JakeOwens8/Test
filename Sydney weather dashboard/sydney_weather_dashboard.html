@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sydney Weather Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --ink: #0a0e1a;
+    --ink2: #111827;
+    --ink3: #1c2333;
+    --muted: #8891a8;
+    --faint: #2a3347;
+    --text: #e8edf5;
+    --text2: #b0bbcc;
+    --blue: #3b82f6;
+    --blue2: #1d4ed8;
+    --teal: #14b8a6;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --red2: #dc2626;
+    --green: #22c55e;
+    --storm: #7c3aed;
+    --storm2: #5b21b6;
+    --r: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--ink);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--ink2);
+    border-bottom: 1px solid var(--faint);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -0.5px; }
+  .logo span { color: var(--blue); }
+  .loc-badge {
+    font-size: 11px; color: var(--muted);
+    border: 1px solid var(--faint); border-radius: 99px;
+    padding: 4px 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .live-dot {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--muted); letter-spacing: 0.06em;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse 1.5s ease infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.4)} }
+
+  /* STORM BANNER */
+  .storm-banner {
+    background: linear-gradient(90deg, #4c1d95, #1e1b4b);
+    border-bottom: 2px solid var(--storm);
+    padding: 12px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+  }
+  .storm-icon { font-size: 18px; animation: shake 2s ease infinite; }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 10%{transform:translateX(-2px)} 20%{transform:translateX(2px)}
+    30%{transform:translateX(-2px)} 40%{transform:translateX(2px)} 50%{transform:translateX(0)}
+  }
+  .storm-label { font-family: 'Syne', sans-serif; font-weight: 700; color: #c4b5fd; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .storm-text { color: #ddd6fe; }
+  .storm-sep { color: var(--storm); margin: 0 4px; }
+  .ses-badge {
+    margin-left: auto; font-family: 'Syne', sans-serif; font-weight: 700;
+    background: var(--storm2); color: #c4b5fd;
+    padding: 4px 12px; border-radius: 99px; font-size: 11px; letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  /* MAIN LAYOUT */
+  .main { padding: 28px 32px; max-width: 1100px; margin: 0 auto; }
+
+  /* CURRENT CONDITIONS ROW */
+  .current-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .current-hero {
+    background: var(--ink2);
+    border: 1px solid var(--faint);
+    border-radius: var(--r);
+    padding: 24px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .current-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 160px; height: 160px;
+    background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .current-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .current-temp { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 64px; line-height: 1; color: var(--text); }
+  .current-temp sup { font-size: 24px; font-weight: 400; vertical-align: top; margin-top: 10px; display: inline-block; color: var(--muted); }
+  .current-condition { font-size: 14px; color: var(--blue); margin-top: 6px; font-weight: 500; }
+  .current-feels { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .current-hi-lo { display: flex; gap: 16px; margin-top: 16px; border-top: 1px solid var(--faint); padding-top: 14px; }
+  .hl-item { display: flex; flex-direction: column; gap: 2px; }
+  .hl-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; }
+  .hl-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px; }
+  .hl-high { color: var(--amber); }
+  .hl-low { color: var(--blue); }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .metric-card {
+    background: var(--ink2);
+    border: 1px solid var(--faint);
+    border-radius: var(--r);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .metric-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .metric-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 24px; }
+  .metric-sub { font-size: 11px; color: var(--muted); }
+  .metric-bar { height: 4px; background: var(--faint); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+  .metric-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--faint); }
+
+  /* CHART PANELS */
+  .chart-panel {
+    background: var(--ink2);
+    border: 1px solid var(--faint);
+    border-radius: var(--r);
+    padding: 22px 24px;
+    margin-bottom: 16px;
+  }
+  .chart-panel-title {
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 18px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .chart-panel-title span { font-family: 'Syne', sans-serif; color: var(--text2); font-size: 11px; }
+
+  /* 5-DAY CARDS */
+  .forecast-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .fc-card {
+    background: var(--ink2);
+    border: 1px solid var(--faint);
+    border-radius: var(--r);
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .fc-card:hover { border-color: var(--blue); }
+  .fc-card.active { border-color: var(--blue); background: #111d2e; }
+  .fc-card.today { border-color: var(--storm); }
+  .fc-day { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .fc-date { font-size: 10px; color: var(--faint); margin-top: 2px; display: block; }
+  .fc-icon { font-size: 26px; margin: 10px 0; }
+  .fc-high { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px; color: var(--text); }
+  .fc-low { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .fc-rain { font-size: 11px; color: var(--blue); margin-top: 6px; }
+  .fc-badge {
+    position: absolute; top: 6px; right: 6px;
+    font-size: 9px; padding: 2px 5px; border-radius: 4px;
+    font-family: 'Syne', sans-serif; font-weight: 700; letter-spacing: 0.06em;
+  }
+  .badge-storm { background: var(--storm2); color: #c4b5fd; }
+  .badge-warn  { background: #7c2d12; color: #fdba74; }
+  .badge-ok    { background: #14532d; color: #86efac; }
+
+  /* TWO-COL CHARTS */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  /* UV METER */
+  .uv-row { display: flex; gap: 6px; margin-top: 10px; }
+  .uv-seg {
+    flex: 1; height: 10px; border-radius: 2px;
+    position: relative;
+  }
+  .uv-pointer {
+    position: absolute; top: -14px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px; color: var(--text); font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* HISTORY COMPARE */
+  .hist-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+  .hist-card {
+    background: var(--ink2); border: 1px solid var(--faint);
+    border-radius: var(--r); padding: 14px 16px;
+  }
+  .hist-lbl { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .hist-now { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 22px; }
+  .hist-avg { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .delta {
+    display: inline-block; font-size: 10px; padding: 2px 7px;
+    border-radius: 99px; margin-top: 6px; font-family: 'Syne', sans-serif; font-weight: 700;
+  }
+  .delta-up { background: #7c1d1d; color: #fca5a5; }
+  .delta-down { background: #1c3a2a; color: #6ee7b7; }
+  .delta-ok { background: #1a2c44; color: #93c5fd; }
+
+  /* SAFETY BOX */
+  .safety-box {
+    background: #1e0a3c; border: 1px solid var(--storm);
+    border-radius: var(--r); padding: 20px 24px; margin-bottom: 20px;
+  }
+  .safety-title {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: #c4b5fd; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .safety-items { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .safety-item { font-size: 12px; color: #ddd6fe; display: flex; gap: 8px; align-items: flex-start; line-height: 1.5; }
+  .safety-bullet { color: var(--storm); margin-top: 1px; flex-shrink: 0; }
+
+  /* FOOTER */
+  .footer {
+    border-top: 1px solid var(--faint);
+    padding: 16px 32px;
+    font-size: 10px; color: var(--muted);
+    display: flex; justify-content: space-between; align-items: center;
+    letter-spacing: 0.06em;
+  }
+
+  /* TABS */
+  .tab-row { display: flex; gap: 2px; margin-bottom: 18px; background: var(--faint); padding: 3px; border-radius: 8px; width: fit-content; }
+  .tab {
+    font-size: 11px; padding: 6px 16px; border-radius: 6px; cursor: pointer;
+    letter-spacing: 0.06em; color: var(--muted); transition: all 0.2s;
+    font-family: 'DM Mono', monospace;
+  }
+  .tab.active { background: var(--ink2); color: var(--text); }
+
+  @media (max-width: 700px) {
+    .main { padding: 16px; }
+    .current-row { grid-template-columns: 1fr; }
+    .forecast-row { grid-template-columns: repeat(3,1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .hist-grid { grid-template-columns: repeat(2,1fr); }
+    .safety-items { grid-template-columns: 1fr; }
+    .header { padding: 14px 16px; }
+    .storm-banner { padding: 10px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <!-- API Integration Notice -->
+  <div style="background:#22223b;color:#f59e0b;padding:8px 32px;font-size:12px;margin-bottom:8px;border-radius:8px;">
+    <strong>Live API integration:</strong> This dashboard is ready to connect to 5 popular weather APIs. Add your API keys below.
+  </div>
+  <div class="header-left">
+    <div class="logo">WX<span>·</span>INTEL</div>
+    <div class="loc-badge">Sydney, NSW · Observatory Hill</div>
+  </div>
+  <div class="live-dot"><div class="dot"></div> LIVE · THU 19 MAR 2026</div>
+</div>
+
+<div class="storm-banner">
+  <div class="storm-icon">⚡</div>
+  <div class="storm-label">BOM Active Warning</div>
+  <div class="storm-text">Severe Thunderstorm Warning — Heavy rainfall, flash flooding possible<span class="storm-sep"> · </span>Eastern NSW incl. Sydney, Hunter, Central Tablelands</div>
+  <div class="ses-badge">SES: 132 500</div>
+</div>
+
+<div class="main">
+
+  <!-- CURRENT CONDITIONS -->
+  <div class="section-title">Current conditions</div>
+  <div class="current-row">
+    <div class="current-hero">
+      <div class="current-label">Temperature · Sydney CBD</div>
+      <div class="current-temp">22<sup>°C</sup></div>
+      <div class="current-condition">⛈ Severe Thunderstorm</div>
+      <div class="current-feels">Feels like 24°C · Humidity 88%</div>
+      <div class="current-hi-lo">
+        <div class="hl-item"><div class="hl-label">TODAY HIGH</div><div class="hl-val hl-high">22°</div></div>
+        <div class="hl-item"><div class="hl-label">OVERNIGHT LOW</div><div class="hl-val hl-low">18°</div></div>
+        <div class="hl-item"><div class="hl-label">SUNRISE</div><div class="hl-val" style="font-size:16px;color:var(--text2)">6:55</div></div>
+        <div class="hl-item"><div class="hl-label">SUNSET</div><div class="hl-val" style="font-size:16px;color:var(--text2)">7:11</div></div>
+      </div>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Rain Chance</div>
+        <div class="metric-val" style="color:var(--blue)">90%</div>
+        <div class="metric-sub">~12 mm expected today</div>
+        <div class="metric-bar"><div class="metric-fill" style="width:90%;background:var(--blue)"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">UV Index</div>
+        <div class="metric-val" style="color:var(--amber)">8</div>
+        <div class="metric-sub">Very High — if skies clear</div>
+        <div class="metric-bar"><div class="metric-fill" style="width:73%;background:var(--amber)"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Humidity</div>
+        <div class="metric-val" style="color:var(--teal)">88%</div>
+        <div class="metric-sub">Very muggy</div>
+        <div class="metric-bar"><div class="metric-fill" style="width:88%;background:var(--teal)"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Wind</div>
+        <div class="metric-val" style="color:var(--text2)">Light</div>
+        <div class="metric-sub">SE · ~10 km/h</div>
+        <div class="metric-bar"><div class="metric-fill" style="width:15%;background:var(--muted)"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5-DAY FORECAST CARDS -->
+  <div class="section-title">5-day outlook</div>
+  <div class="forecast-row">
+    <div class="fc-card today active">
+      <div class="fc-badge badge-storm">SEVERE</div>
+      <div class="fc-day">Thu</div>
+      <span class="fc-date">19 Mar</span>
+      <div class="fc-icon">⛈</div>
+      <div class="fc-high">22°</div>
+      <div class="fc-low">18° low</div>
+      <div class="fc-rain">90% · ~12mm</div>
+    </div>
+    <div class="fc-card">
+      <div class="fc-badge badge-warn">HIGH</div>
+      <div class="fc-day">Fri</div>
+      <span class="fc-date">20 Mar</span>
+      <div class="fc-icon">🌧</div>
+      <div class="fc-high">23°</div>
+      <div class="fc-low">17° low</div>
+      <div class="fc-rain">80% · ~4mm</div>
+    </div>
+    <div class="fc-card">
+      <div class="fc-badge badge-warn">HIGH</div>
+      <div class="fc-day">Sat</div>
+      <span class="fc-date">21 Mar</span>
+      <div class="fc-icon">🌦</div>
+      <div class="fc-high">24°</div>
+      <div class="fc-low">17° low</div>
+      <div class="fc-rain">50% · ~2mm</div>
+    </div>
+    <div class="fc-card">
+      <div class="fc-badge badge-ok">EASING</div>
+      <div class="fc-day">Sun</div>
+      <span class="fc-date">22 Mar</span>
+      <div class="fc-icon">⛅</div>
+      <div class="fc-high">25°</div>
+      <div class="fc-low">16° low</div>
+      <div class="fc-rain">30% · ~1mm</div>
+    </div>
+    <div class="fc-card">
+      <div class="fc-badge badge-ok">CLEAR</div>
+      <div class="fc-day">Mon</div>
+      <span class="fc-date">23 Mar</span>
+      <div class="fc-icon">🌤</div>
+      <div class="fc-high">26°</div>
+      <div class="fc-low">16° low</div>
+      <div class="fc-rain">15% · ~0mm</div>
+    </div>
+  </div>
+
+  <!-- TEMPERATURE CHART -->
+  <div class="chart-panel">
+    <div class="chart-panel-title">Temperature trend — 5 day <span>°C · High / Low</span></div>
+    <div style="position:relative;height:220px">
+      <canvas id="tempChart"></canvas>
+    </div>
+  </div>
+
+  <!-- TWO COL CHARTS -->
+  <div class="two-col">
+    <div class="chart-panel" style="margin-bottom:0">
+      <div class="chart-panel-title">Rain probability <span>% chance of rain</span></div>
+      <div style="position:relative;height:200px">
+        <canvas id="rainChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-panel" style="margin-bottom:0">
+      <div class="chart-panel-title">Expected rainfall <span>mm</span></div>
+      <div style="position:relative;height:200px">
+        <canvas id="mmChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div style="height:16px"></div>
+
+  <!-- UV & HUMIDITY CHARTS -->
+  <div class="two-col">
+    <div class="chart-panel" style="margin-bottom:0">
+      <div class="chart-panel-title">UV index forecast <span>daily peak</span></div>
+      <div style="position:relative;height:180px">
+        <canvas id="uvChart"></canvas>
+      </div>
+      <div class="uv-row" style="margin-top:12px">
+        <div class="uv-seg" style="background:#22c55e;opacity:.7"></div>
+        <div class="uv-seg" style="background:#84cc16;opacity:.7"></div>
+        <div class="uv-seg" style="background:#eab308;opacity:.7"></div>
+        <div class="uv-seg" style="background:#f97316;opacity:.7"></div>
+        <div class="uv-seg" style="background:#ef4444;opacity:.7"></div>
+        <div class="uv-seg" style="background:#a855f7;opacity:.7"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:.04em">
+        <span>Low</span><span>Moderate</span><span>High</span><span>V.High</span><span>Extreme</span><span>+</span>
+      </div>
+    </div>
+    <div class="chart-panel" style="margin-bottom:0">
+      <div class="chart-panel-title">Humidity forecast <span>% relative humidity</span></div>
+      <div style="position:relative;height:180px">
+        <canvas id="humidChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div style="height:20px"></div>
+
+  <!-- HISTORICAL COMPARISON -->
+  <div class="section-title">Today vs. March historical average</div>
+  <div class="hist-grid">
+    <div class="hist-card">
+      <div class="hist-lbl">Max temperature</div>
+      <div class="hist-now" style="color:var(--amber)">22°C</div>
+      <div class="hist-avg">avg 24.8°C</div>
+      <div class="delta delta-down">–2.8° below avg</div>
+    </div>
+    <div class="hist-card">
+      <div class="hist-lbl">Humidity</div>
+      <div class="hist-now" style="color:var(--teal)">88%</div>
+      <div class="hist-avg">avg 62%</div>
+      <div class="delta delta-up">+26% above avg</div>
+    </div>
+    <div class="hist-card">
+      <div class="hist-lbl">Rain days in March</div>
+      <div class="hist-now" style="color:var(--blue)">13+</div>
+      <div class="hist-avg">avg 13.6 days</div>
+      <div class="delta delta-ok">On track</div>
+    </div>
+    <div class="hist-card">
+      <div class="hist-lbl">Wind speed</div>
+      <div class="hist-now" style="color:var(--text2)">10 km/h</div>
+      <div class="hist-avg">avg 24 km/h</div>
+      <div class="delta delta-down">Well below avg</div>
+    </div>
+  </div>
+
+  <!-- WEEKLY ACCUMULATION CHART -->
+  <div class="chart-panel">
+    <div class="chart-panel-title">Weekly rainfall accumulation — Tue–Mon <span>cumulative mm</span></div>
+    <div style="position:relative;height:180px">
+      <canvas id="accumChart"></canvas>
+    </div>
+  </div>
+
+  <!-- SAFETY BOX -->
+  <div class="safety-box">
+    <div class="safety-title">⚡ Active storm safety — BOM severe warning in effect</div>
+    <div class="safety-items">
+      <div class="safety-item"><div class="safety-bullet">▸</div><div>Stay indoors away from windows. Keep children and pets inside.</div></div>
+      <div class="safety-item"><div class="safety-bullet">▸</div><div>Never drive, ride, or walk through floodwater — turn around, don't drown.</div></div>
+      <div class="safety-item"><div class="safety-bullet">▸</div><div>Keep clear of creeks, storm drains and low-lying areas.</div></div>
+      <div class="safety-item"><div class="safety-bullet">▸</div><div>If trapped by flash flooding, move to highest point and call 000.</div></div>
+      <div class="safety-item"><div class="safety-bullet">▸</div><div>SES emergency help: <strong style="color:#c4b5fd">132 500</strong></div></div>
+      <div class="safety-item"><div class="safety-bullet">▸</div><div>Monitor the <strong style="color:#c4b5fd">Hazards Near Me NSW</strong> app for live warnings.</div></div>
+    </div>
+  </div>
+
+  <!-- SOURCES -->
+  <div style="font-size:10px;color:var(--muted);letter-spacing:.06em;margin-bottom:8px">
+    SOURCES: Bureau of Meteorology (BOM) · Weatherzone · AccuWeather · Ventusky · Weather Atlas · Weather2Travel · AQI.in · Meteored
+  </div>
+
+</div>
+
+<div class="footer">
+  <div>WX·INTEL Sydney Weather Dashboard · Updated Thu 19 Mar 2026</div>
+  <div>Data: BOM, Weatherzone, AccuWeather + 5 sources</div>
+</div>
+
+<script>
+// --- WEATHER API INTEGRATION ---
+// Add your API keys below
+const API_KEYS = {
+  openWeatherMap: 'YOUR_OPENWEATHERMAP_KEY',
+  weatherAPI: 'YOUR_WEATHERAPI_KEY',
+  weatherstack: 'YOUR_WEATHERSTACK_KEY',
+  accuweather: 'YOUR_ACCUWEATHER_KEY',
+  visualCrossing: 'YOUR_VISUALCROSSING_KEY'
+};
+
+const API_ENDPOINTS = {
+  openWeatherMap: 'https://api.openweathermap.org/data/2.5/forecast?q=Sydney&units=metric&appid=' + API_KEYS.openWeatherMap,
+  weatherAPI: 'https://api.weatherapi.com/v1/forecast.json?key=' + API_KEYS.weatherAPI + '&q=Sydney&days=5',
+  weatherstack: 'http://api.weatherstack.com/forecast?access_key=' + API_KEYS.weatherstack + '&query=Sydney',
+  accuweather: 'https://dataservice.accuweather.com/forecasts/v1/daily/5day/216536?apikey=' + API_KEYS.accuweather,
+  visualCrossing: 'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/weatherdata/forecast?location=Sydney&aggregateHours=24&unitGroup=metric&contentType=json&key=' + API_KEYS.visualCrossing
+};
+
+
+// Sample code: Fetch and display current conditions from OpenWeatherMap
+async function fetchCurrentConditions() {
+  try {
+    const res = await fetch(API_ENDPOINTS.openWeatherMap);
+    const data = await res.json();
+    // Update temperature
+    const tempElem = document.querySelector('.current-temp');
+    if (tempElem && data && data.list && data.list[0] && data.list[0].main) {
+      tempElem.innerHTML = Math.round(data.list[0].main.temp) + '<sup>°C</sup>';
+    }
+    // Update condition
+    const condElem = document.querySelector('.current-condition');
+    if (condElem && data && data.list && data.list[0] && data.list[0].weather && data.list[0].weather[0]) {
+      condElem.textContent = data.list[0].weather[0].description;
+    }
+  } catch (e) {
+    console.error('OpenWeatherMap fetch error:', e);
+  }
+}
+
+// Sample code: Fetch and display 5-day forecast from WeatherAPI
+async function fetchForecast() {
+  try {
+    const res = await fetch(API_ENDPOINTS.weatherAPI);
+    const data = await res.json();
+    // Update forecast cards
+    if (data && data.forecast && data.forecast.forecastday) {
+      const cards = document.querySelectorAll('.forecast-row .fc-card');
+      data.forecast.forecastday.forEach((day, idx) => {
+        if (cards[idx]) {
+          const highElem = cards[idx].querySelector('.fc-high');
+          const lowElem = cards[idx].querySelector('.fc-low');
+          const iconElem = cards[idx].querySelector('.fc-icon');
+          if (highElem) highElem.textContent = Math.round(day.day.maxtemp_c) + '°';
+          if (lowElem) lowElem.textContent = Math.round(day.day.mintemp_c) + '° low';
+          if (iconElem) iconElem.textContent = day.day.condition.text;
+        }
+      });
+    }
+  } catch (e) {
+    console.error('WeatherAPI fetch error:', e);
+  }
+}
+
+// Call these functions on page load
+window.addEventListener('DOMContentLoaded', () => {
+  fetchCurrentConditions();
+  fetchForecast();
+});
+
+// --- END WEATHER API INTEGRATION ---
+
+const days = ['Thu 19', 'Fri 20', 'Sat 21', 'Sun 22', 'Mon 23'];
+const gridColor = 'rgba(255,255,255,0.05)';
+const tickColor = '#8891a8';
+const baseOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: { backgroundColor:'#1c2333', titleColor:'#e8edf5', bodyColor:'#b0bbcc', borderColor:'#2a3347', borderWidth:1, padding:10, cornerRadius:6 } },
+  scales: {
+    x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family:"'DM Mono', monospace", size:11 } } },
+    y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family:"'DM Mono', monospace", size:11 } } }
+  }
+};
+
+// TEMPERATURE CHART
+new Chart(document.getElementById('tempChart'), {
+  type: 'line',
+  data: {
+    labels: days,
+    datasets: [
+      {
+        label: 'High °C',
+        data: [22, 23, 24, 25, 26],
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245,158,11,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#f59e0b',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2.5,
+      },
+      {
+        label: 'Low °C',
+        data: [18, 17, 17, 16, 16],
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.06)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#3b82f6',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2.5,
+      },
+      {
+        label: 'March avg high',
+        data: [24.8, 24.8, 24.8, 24.8, 24.8],
+        borderColor: 'rgba(245,158,11,0.3)',
+        borderDash: [5, 5],
+        pointRadius: 0,
+        borderWidth: 1.5,
+        fill: false,
+      }
+    ]
+  },
+  options: {
+    ...baseOpts,
+    plugins: {
+      ...baseOpts.plugins,
+      legend: {
+        display: true,
+        labels: { color: tickColor, font: { family:"'DM Mono', monospace", size: 10 }, boxWidth: 14, padding: 16, usePointStyle: true }
+      }
+    },
+    scales: {
+      ...baseOpts.scales,
+      y: { ...baseOpts.scales.y, min: 12, max: 30, ticks: { ...baseOpts.scales.y.ticks, callback: v => v + '°' } }
+    }
+  }
+});
+
+// RAIN PROBABILITY CHART
+new Chart(document.getElementById('rainChart'), {
+  type: 'bar',
+  data: {
+    labels: days,
+    datasets: [{
+      label: 'Rain chance %',
+      data: [90, 80, 50, 30, 15],
+      backgroundColor: ['rgba(124,58,237,0.7)','rgba(59,130,246,0.7)','rgba(59,130,246,0.5)','rgba(59,130,246,0.35)','rgba(59,130,246,0.2)'],
+      borderColor: ['#7c3aed','#3b82f6','#3b82f6','#3b82f6','#3b82f6'],
+      borderWidth: 1.5,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    ...baseOpts,
+    scales: {
+      ...baseOpts.scales,
+      y: { ...baseOpts.scales.y, min: 0, max: 100, ticks: { ...baseOpts.scales.y.ticks, callback: v => v + '%' } }
+    }
+  }
+});
+
+// RAINFALL MM CHART
+new Chart(document.getElementById('mmChart'), {
+  type: 'bar',
+  data: {
+    labels: days,
+    datasets: [{
+      label: 'Expected mm',
+      data: [12, 4, 2, 1, 0],
+      backgroundColor: ['rgba(124,58,237,0.75)','rgba(59,130,246,0.65)','rgba(59,130,246,0.45)','rgba(59,130,246,0.3)','rgba(59,130,246,0.15)'],
+      borderColor: ['#7c3aed','#3b82f6','#3b82f6','#3b82f6','#3b82f6'],
+      borderWidth: 1.5,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    ...baseOpts,
+    scales: {
+      ...baseOpts.scales,
+      y: { ...baseOpts.scales.y, min: 0, ticks: { ...baseOpts.scales.y.ticks, callback: v => v + 'mm' } }
+    }
+  }
+});
+
+// UV CHART
+new Chart(document.getElementById('uvChart'), {
+  type: 'line',
+  data: {
+    labels: days,
+    datasets: [{
+      label: 'UV Index',
+      data: [8, 8, 7, 8, 9],
+      borderColor: '#f59e0b',
+      backgroundColor: 'rgba(245,158,11,0.1)',
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: ['#ef4444','#ef4444','#f97316','#ef4444','#ef4444'],
+      pointRadius: 6,
+      borderWidth: 2.5,
+    }]
+  },
+  options: {
+    ...baseOpts,
+    scales: {
+      ...baseOpts.scales,
+      y: { ...baseOpts.scales.y, min: 0, max: 12, ticks: { ...baseOpts.scales.y.ticks } }
+    }
+  }
+});
+
+// HUMIDITY CHART
+new Chart(document.getElementById('humidChart'), {
+  type: 'line',
+  data: {
+    labels: days,
+    datasets: [
+      {
+        label: 'Humidity %',
+        data: [88, 82, 72, 65, 60],
+        borderColor: '#14b8a6',
+        backgroundColor: 'rgba(20,184,166,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#14b8a6',
+        pointRadius: 5,
+        borderWidth: 2.5,
+      },
+      {
+        label: 'March avg 62%',
+        data: [62, 62, 62, 62, 62],
+        borderColor: 'rgba(20,184,166,0.3)',
+        borderDash: [5, 5],
+        pointRadius: 0,
+        borderWidth: 1.5,
+        fill: false,
+      }
+    ]
+  },
+  options: {
+    ...baseOpts,
+    plugins: {
+      ...baseOpts.plugins,
+      legend: {
+        display: true,
+        labels: { color: tickColor, font: { family:"'DM Mono', monospace", size: 10 }, boxWidth: 14, padding: 14, usePointStyle: true }
+      }
+    },
+    scales: {
+      ...baseOpts.scales,
+      y: { ...baseOpts.scales.y, min: 40, max: 100, ticks: { ...baseOpts.scales.y.ticks, callback: v => v + '%' } }
+    }
+  }
+});
+
+// ACCUMULATION CHART
+new Chart(document.getElementById('accumChart'), {
+  type: 'line',
+  data: {
+    labels: ['Tue 17', 'Wed 18', 'Thu 19', 'Fri 20', 'Sat 21', 'Sun 22', 'Mon 23'],
+    datasets: [
+      {
+        label: 'Cumulative rainfall mm',
+        data: [0, 4, 16, 20, 22, 23, 23],
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.12)',
+        fill: true,
+        tension: 0.3,
+        pointBackgroundColor: '#3b82f6',
+        pointRadius: 5,
+        borderWidth: 2.5,
+      },
+      {
+        label: 'March weekly avg',
+        data: [0, 5, 10, 14, 18, 22, 25],
+        borderColor: 'rgba(255,255,255,0.15)',
+        borderDash: [5, 5],
+        pointRadius: 0,
+        borderWidth: 1.5,
+        fill: false,
+      }
+    ]
+  },
+  options: {
+    ...baseOpts,
+    plugins: {
+      ...baseOpts.plugins,
+      legend: {
+        display: true,
+        labels: { color: tickColor, font: { family:"'DM Mono', monospace", size: 10 }, boxWidth: 14, padding: 16, usePointStyle: true }
+      }
+    },
+    scales: {
+      ...baseOpts.scales,
+      y: { ...baseOpts.scales.y, min: 0, ticks: { ...baseOpts.scales.y.ticks, callback: v => v + 'mm' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
